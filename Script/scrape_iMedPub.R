@@ -2,7 +2,7 @@ library(tidyverse)
 library(rvest)
 library(RSelenium)
 
-journals <- read.csv(url("https://github.com/andreaspacher/academic-publishers/blob/main/Output/allpublishers-PRELIMINARY-2021-12-09.csv?raw=true")) %>%
+journals <- read.csv(url("https://raw.githubusercontent.com/andreaspacher/academic-publishers/0b7236a0e799377d067d471a1c132a98619b9294/Output/allpublishers-PRELIMINARY-2021-12-09.csv")) %>%
   filter(publisher == "iMedPub") %>%
   distinct()
 

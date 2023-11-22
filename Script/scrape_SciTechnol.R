@@ -1,69 +1,85 @@
 library(tidyverse)
 library(rvest)
 
-journals <- read.csv(url("https://github.com/andreaspacher/academic-publishers/blob/main/Output/allpublishers-PRELIMINARY-2021-12-09.csv?raw=true")) %>%
-  filter(publisher == "SciTechnol") %>%
+journals <- read.csv(url("https://raw.githubusercontent.com/andreaspacher/academic-publishers/0b7236a0e799377d067d471a1c132a98619b9294/Output/allpublishers-PRELIMINARY-2021-12-09.csv")) %>%
+  filter(publisher == "OMICS") %>%
   distinct()
 
 journals$url <- sub("scitechnol.com/", "scitechnol.com/editorialboard-", journals$url)
 
+for (i in 1:nrow(journals)){
+  # Check and modify the URL if "NA" prefix is present
+  journals$url[i] <- sub("^NA", "", journals$url[i])
+}
+
 # prepare the scraping process
 EdList <- list()
 
-for(i in 1:nrow(journals)) {
+for (i in 1:nrow(journals)) {
   
   printtext <- paste(i, journals$url[i], sep=": ")
   print(printtext)
   
-  # start scraping
-  wholepage <- try(rvest::session(
-    journals$url[i],
-    httr::user_agent("Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/534.20 (KHTML, like Gecko) Chrome/11.0.672.2 Safari/534.20")
-  ), silent = TRUE)
+
+  # Start scraping with the modified URL
+  wholepage <- try(
+    rvest::session(
+      journals$url[i],
+      httr::user_agent("Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/534.20 (KHTML, like Gecko) Chrome/11.0.672.2 Safari/534.20")
+    ),
+    silent = TRUE
+  )
+  
   
   # did it work?
   if (inherits(wholepage, "try-error")) {
-    print("--- 404 error?")
+    print(paste("--- Error scraping page:", journals$url[i]))
     next
   }
-  
-  journalname <- rvest::html_node(wholepage, css = "h2.font-size-30")
-  journalname <- rvest::html_text(journalname)
-  journalname <- stringr::str_remove(journalname, "\\..*")
-  
-  issn <- rvest::html_node(wholepage, ".font-size-20")
-  issn <- rvest::html_text(issn)
-  
-  webpage <- rvest::html_nodes(wholepage, css = ".col-md-9")
-  
-  people <- rvest::html_nodes(webpage, "h4")
-  people <- rvest::html_text(people)
-  
-  affiliations <- rvest::html_nodes(webpage, "p.team-v3-paragraph")
-  affiliations <- rvest::html_text(affiliations)
-  
-  EdB <- data.frame(
-    "editor" = people,
-    "role" = rep("Editorial Board", length(people)),
-    "affiliation" = affiliations,
-    "journal" = journalname,
-    "publisher" = "SciTechnol",
-    "issn" = issn,
-    "url" = journals$url[i],
-    "date" = Sys.Date()
-  )
-  
-  EdList[[i]] <- EdB
-  print(paste0("--- found ", nrow(EdB), " editors!"))
-  
-  Sys.sleep(8)
-  
+
+journalname <- rvest::html_node(wholepage, css = "h2.font-size-30")
+journalname <- rvest::html_text(journalname)
+journalname <- stringr::str_remove(journalname, "\\..*")
+
+issn <- rvest::html_node(wholepage, ".font-size-20")
+issn <- rvest::html_text(issn)
+
+webpage <- rvest::html_nodes(wholepage, css = ".col-md-9")
+
+people <- rvest::html_nodes(webpage, "h4")
+people <- rvest::html_text(people)
+
+affiliations <- rvest::html_nodes(webpage, "p.team-v3-paragraph")
+affiliations <- rvest::html_text(affiliations)
+
+EdB <- data.frame(
+  "editor" = people,
+  "role" = rep("Editorial Board", length(people)),
+  "affiliation" = affiliations,
+  "journal" = journalname,
+  "publisher" = "SciTechnol",
+  "issn" = issn,
+  "url" = journals$url[i],
+  "date" = Sys.Date()
+)
+
+EdList[[i]] <- EdB
+print(paste0("--- Found ", nrow(EdB), " editors for ", journalname))
+
+Sys.sleep(8)
+
 }
+
+combined_DF <- dplyr::bind_rows(EdList)
+print("Finished scraping process.")
+str(combined_DF)
+
 
 library(tidyverse)
 DF <- dplyr::bind_rows(EdList) %>%
   select(publisher, journal, issn, role, editor, affiliation, url, date) %>%
   distinct()
+
 
 journals2 <- journals[grep("scitechnol.com", journals$url),]
 journals2 <- anti_join(journals,journals2)
