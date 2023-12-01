@@ -52,23 +52,28 @@ people <- rvest::html_text(people)
 affiliations <- rvest::html_nodes(webpage, "p.team-v3-paragraph")
 affiliations <- rvest::html_text(affiliations)
 
-EdB <- data.frame(
-  "editor" = people,
-  "role" = rep("Editorial Board", length(people)),
-  "affiliation" = affiliations,
-  "journal" = journalname,
-  "publisher" = "SciTechnol",
-  "issn" = issn,
-  "url" = journals$url[i],
-  "date" = Sys.Date()
-)
-
-EdList[[i]] <- EdB
-print(paste0("--- Found ", nrow(EdB), " editors for ", journalname))
+# Check if 'people' vector is empty
+if (length(people) > 0) {
+  EdB <- data.frame(
+    "editor" = people,
+    "role" = rep("Editorial Board", length(people)),
+    "affiliation" = affiliations,
+    "journal" = journalname,
+    "publisher" = "SciTechnol",
+    "issn" = issn,
+    "url" = journals$url[i],
+    "date" = Sys.Date()
+  )
+  
+  EdList[[i]] <- EdB
+  print(paste0("--- Found ", nrow(EdB), " editors for ", journalname))
+} else {
+  print(paste("--- No editors found for ", journalname))
+}
 
 Sys.sleep(8)
-
 }
+
 
 combined_DF <- dplyr::bind_rows(EdList)
 print("Finished scraping process.")
