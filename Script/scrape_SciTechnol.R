@@ -1,16 +1,16 @@
 library(tidyverse)
 library(rvest)
-
+scrape_Scitechnol <-function() {
 journals <- read.csv(url("https://raw.githubusercontent.com/andreaspacher/academic-publishers/0b7236a0e799377d067d471a1c132a98619b9294/Output/allpublishers-PRELIMINARY-2021-12-09.csv")) %>%
   filter(publisher == "OMICS") %>%
   distinct()
 
-journals$url <- sub("scitechnol.com/", "scitechnol.com/editorialboard-", journals$url)
+journals %<>% 
+  mutate(url=stringr::str_replace_all(url,"^NA", ""))
 
-for (i in 1:nrow(journals)){
-  # Check and modify the URL if "NA" prefix is present
-  journals$url[i] <- sub("^NA", "", journals$url[i])
-}
+#TODO: Rewrite using tidyverse -- mutate and stringr::
+#try using less urls in journals; or try other scrape files
+journals$url <- sub("scitechnol.com/", "scitechnol.com/editorialboard-", journals$url) 
 
 # prepare the scraping process
 EdList <- list()
@@ -52,8 +52,12 @@ people <- rvest::html_text(people)
 affiliations <- rvest::html_nodes(webpage, "p.team-v3-paragraph")
 affiliations <- rvest::html_text(affiliations)
 
-# Check if 'people' vector is empty
-if (length(people) > 0) {
+
+if(length(people)==0) {
+  warning("No people found", printtext)
+  next
+}
+
   EdB <- data.frame(
     "editor" = people,
     "role" = rep("Editorial Board", length(people)),
@@ -67,12 +71,10 @@ if (length(people) > 0) {
   
   EdList[[i]] <- EdB
   print(paste0("--- Found ", nrow(EdB), " editors for ", journalname))
-} else {
-  print(paste("--- No editors found for ", journalname))
 }
 
 Sys.sleep(8)
-}
+
 
 
 combined_DF <- dplyr::bind_rows(EdList)
@@ -124,6 +126,11 @@ for(i in 1:nrow(journals2)) {
   affiliations <- rvest::html_nodes(webpage, "p.team-v3-paragraph")
   affiliations <- rvest::html_text(affiliations)
   
+  if (length(people)==0) {
+    warning("no people", printtext)
+    next
+  }
+  
   EdB <- data.frame(
     "editor" = people,
     "role" = rep("Editorial Board", length(people)),
@@ -155,3 +162,7 @@ DF3 <- DF3 %>%
   mutate(issn = stringr::str_remove(issn, "ISSN: "))
 
 write_tsv(DF3, paste0("Output\\2022-Scraping\\SciTechnol-", Sys.Date(), ".tsv"))
+
+}
+debug(scrape_Scitechnol)
+scrape_Scitechnol()
