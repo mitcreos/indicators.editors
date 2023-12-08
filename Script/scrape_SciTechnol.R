@@ -1,16 +1,28 @@
 library(tidyverse)
 library(rvest)
+library(magrittr)
+library(dplyr)
+library(stringr)
 scrape_Scitechnol <-function() {
 journals <- read.csv(url("https://raw.githubusercontent.com/andreaspacher/academic-publishers/0b7236a0e799377d067d471a1c132a98619b9294/Output/allpublishers-PRELIMINARY-2021-12-09.csv")) %>%
   filter(publisher == "OMICS") %>%
   distinct()
 
-journals %<>% 
+journals %<>%
   mutate(url=stringr::str_replace_all(url,"^NA", ""))
 
-#TODO: Rewrite using tidyverse -- mutate and stringr::
+journals <- journals %>%
+  mutate(url = if_else(str_detect(url, "^NA"), str_replace_all(url, "^NA", ""), url))
+
+journals <- journals %>%
+  mutate(url = str_replace(url, "scitechnol.com/", "scitechnol.com/editorialboard-"))
 #try using less urls in journals; or try other scrape files
-journals$url <- sub("scitechnol.com/", "scitechnol.com/editorialboard-", journals$url) 
+
+#Try taking a select few URLs instead -> still no people found
+start <- 5
+end <- 10
+journals <- journals %>%
+  slice(start:end)
 
 # prepare the scraping process
 EdList <- list()
